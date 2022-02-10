@@ -24,6 +24,9 @@ namespace Diwoom
             Bitmap result = new Bitmap(size, size);
             using (Graphics g = Graphics.FromImage(result))
             {
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.None;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
                 g.DrawImage(bmp, 0, 0, size, size);
             }
 
@@ -41,26 +44,32 @@ namespace Diwoom
         public static byte[] DrawBitmap(Bitmap b, bool is32)
         {
             var buffer = new List<byte>();
-            var bitmap = EncodeBitmapPixels(b);
-            var frame_size = bitmap.Length + 6;
+            var range = new Rectangle(0, 0, b.Width, b.Height);
+            Bitmap indexed = b.Clone(range, PixelFormat.Format8bppIndexed);
+            var bitmap = EncodeBitmapPixels(indexed);
+            var frame_size = bitmap.Length + 7;
+            if (is32)
+            {
+                frame_size++;
+            }
             buffer.AddRange(new byte[] {
                 0x0, 0x0A, 0x0A, 0x04,
                 0xAA, (byte)(frame_size & 0xFF), (byte)((frame_size >> 8) & 0xFF),
-                0, 0, (byte)(is32 ? 3 : 0),
+                0, 0, (byte)(is32 ? 3 : 0), (byte)indexed.Palette.Entries.Length,
             });
+            if (is32)
+            {
+                buffer.Add(0);
+            }
             buffer.AddRange(bitmap);
             return buffer.ToArray();
         }
-        public static byte[] EncodeBitmapPixels(Bitmap b)
+        public static byte[] EncodeBitmapPixels(Bitmap indexed)
         {
             var buffer = new List<byte>();
-            var range = new Rectangle(0, 0, b.Width, b.Height);
-            Bitmap indexed = b.Clone(range, PixelFormat.Format8bppIndexed);
             Int32 stride;
             int n_pale = indexed.Palette.Entries.Length;
             byte[] rawData = GetImageData(indexed, out stride, true);
-
-            buffer.AddRange(Int2B(n_pale));
 
             foreach (var entry in indexed.Palette.Entries)
             {
@@ -76,14 +85,20 @@ namespace Diwoom
 
             foreach (var idx in rawData)
             {
-                currentByte <<= totalBits;
-                currentByte |= idx;
-                bitCnt += totalBits;
-                if (bitCnt >= 8)
+                if (totalBits == 8)
                 {
-                    buffer.Add((byte)(currentByte >> (bitCnt - 8)));
-                    currentByte = (ushort)(currentByte & ~(1 << (bitCnt - 8) - 1));
-                    bitCnt -= 8;
+                    buffer.Add(idx);
+                } else
+                {
+                    currentByte <<= totalBits;
+                    currentByte |= idx;
+                    bitCnt += totalBits;
+                    if (bitCnt >= 8)
+                    {
+                        buffer.Add((byte)(currentByte >> (bitCnt - 8)));
+                        currentByte = (ushort)(currentByte & ~(1 << (bitCnt - 8) - 1));
+                        bitCnt -= 8;
+                    }
                 }
             }
 

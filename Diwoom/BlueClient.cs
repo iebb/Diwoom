@@ -23,9 +23,25 @@ namespace Diwoom
         long lastMS = 0;
         bool connected = false;
 
-        public IReadOnlyCollection<BluetoothDeviceInfo> Discover()
+        string DivoomPrefix = "117558";
+
+        public List<BluetoothDeviceInfo> Discover()
         {
-            return _client.DiscoverDevices();
+            List<BluetoothDeviceInfo> l = new List<BluetoothDeviceInfo>();
+            foreach (var device in _client.DiscoverDevices())
+            {
+                if (device.DeviceAddress.ToString().StartsWith(DivoomPrefix)) l.Add(device);
+            }
+            return l;
+        }
+        public List<BluetoothDeviceInfo> ConnectedDevices()
+        {
+            List<BluetoothDeviceInfo> l = new List<BluetoothDeviceInfo>();
+            foreach (var device in _client.PairedDevices)
+            {
+                if (device.Connected && device.DeviceAddress.ToString().StartsWith(DivoomPrefix)) l.Add(device);
+            }
+            return l;
         }
 
         public void Connect(BluetoothDeviceInfo device)
@@ -36,10 +52,10 @@ namespace Diwoom
                 try
                 {
                     _client.Connect(_device.DeviceAddress, BluetoothService.SerialPort);
-                }
-                finally
-                {
                     connected = true;
+                }
+                catch (Exception ex) {
+                    connected = false;
                 }
             }
         }

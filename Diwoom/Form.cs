@@ -23,7 +23,7 @@ namespace Diwoom
             InitializeComponent();
         }
 
-        async Task Discover()
+        async Task Discover(bool otherDevices)
         {
             await Task.Run(() =>
             {
@@ -31,8 +31,8 @@ namespace Diwoom
                 {
                     progressBar1.Style = ProgressBarStyle.Marquee;
                 });
-                var devices = client.Discover();
                 btDevices.Clear();
+                var devices = client.ConnectedDevices();
                 foreach (var device in devices)
                 {
                     btDevices.Add(device);
@@ -40,22 +40,35 @@ namespace Diwoom
                 }
                 deviceSelector.BeginInvoke((Action)delegate ()
                 {
-                    if (btDevices.Count > 0)
+                    deviceSelector.Items.Clear();
+                    // deviceSelector.SelectedIndex = 0;
+                    if (btDevices.Count == 0)
                     {
-                        deviceSelector.Items.Clear();
+                        btnConnect.Enabled = false;
+                    }
+                    else
+                    {
                         foreach (var device in btDevices)
                         {
                             deviceSelector.Items.Add(device.DeviceName + " [" + device.DeviceAddress.ToString() + "]");
                         }
                         deviceSelector.SelectedIndex = 0;
-                        btnConnect.Enabled = true;
-                    } 
-                    else
-                    {
-                        deviceSelector.Enabled = false;
-                        btnConnect.Enabled = false;
                     }
                 });
+                foreach (var device in client.Discover())
+                {
+                    deviceSelector.BeginInvoke((Action)delegate ()
+                    {
+                        btnConnect.Enabled = true;
+                        btDevices.Add(device);
+                        deviceSelector.Items.Add(device.DeviceName + " [" + device.DeviceAddress.ToString() + "]");
+                        if (deviceSelector.SelectedIndex == -1)
+                        {
+                            deviceSelector.SelectedIndex = 0;
+                        }
+                    });
+                    // Console.WriteLine(device.DeviceAddress.ToString());
+                }
                 progressBar1.BeginInvoke((Action)delegate ()
                 {
                     progressBar1.Style = ProgressBarStyle.Continuous;
@@ -67,7 +80,7 @@ namespace Diwoom
 
         private void Diwoom_Load(object sender, EventArgs e)
         {
-            Discover();
+            Discover(false);
         }
 
         private void btnConnect_Click(object sender, EventArgs e)
@@ -82,7 +95,7 @@ namespace Diwoom
 
         private void btnRefresh_Click(object sender, EventArgs e)
         {
-            Discover();
+            Discover(true);
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -158,7 +171,7 @@ namespace Diwoom
             var scoreRed = ((int)textBoxR.Value);
             var scoreBlue = ((int)textBoxB.Value);
             client.SendCommand(69, new byte[]{
-                6, 0, (byte)(scoreRed >> 8), (byte)(scoreRed & 0xff), (byte)(scoreBlue >> 8), (byte)(scoreBlue & 0xff),
+                6, 0,  (byte)(scoreRed & 0xff), (byte)(scoreRed >> 8), (byte)(scoreBlue & 0xff), (byte)(scoreBlue >> 8), 
             });
         }
 
