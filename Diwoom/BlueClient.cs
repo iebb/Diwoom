@@ -49,8 +49,14 @@ namespace Diwoom
             using (var memstream = new MemoryStream())
             {
                 context.Request.InputStream.CopyTo(memstream);
-                var im = Image.FromStream(memstream);
-                DrawBitmapDevice((Bitmap)im);
+                try
+                {
+                    var im = Image.FromStream(memstream);
+                    DrawBitmapDevice((Bitmap)im);
+                } catch
+                {
+                    return Encoding.UTF8.GetBytes("malformed");
+                }
             }
             return new byte[] { 65 };
         }
