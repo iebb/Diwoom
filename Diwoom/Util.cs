@@ -1,11 +1,12 @@
-﻿using System;
+﻿using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing.Processors.Quantization;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Diwoom
 {
@@ -13,7 +14,7 @@ namespace Diwoom
     {
         private static byte[] Int2B(int p)
         {
-            return new byte[]{(byte)(p & 0x00ff), (byte)(p >> 8)};
+            return new byte[] { (byte)(p & 0x00ff), (byte)(p >> 8) };
         }
         private static byte[] FrameChecksum(byte[] bytes)
         {
@@ -41,11 +42,32 @@ namespace Diwoom
             buffer.Add(0x02);
             return buffer.ToArray();
         }
+
+
+        public static Bitmap To256PaletteBitmap(SixLabors.ImageSharp.Image image)
+        {
+            using (var stream = new System.IO.MemoryStream())
+            {
+                var options = new PngEncoder { Quantizer = new WuQuantizer(new QuantizerOptions { Dither = null, MaxColors = 256 }), ColorType = PngColorType.Palette };
+                image.Save(stream, options);
+                stream.Position = 0;
+                return (Bitmap)Image.FromStream(stream);
+            }
+        }
+        public static SixLabors.ImageSharp.Image ImageSharpFromBitmap(Bitmap b)
+        {
+            using (var stream = new System.IO.MemoryStream())
+            {
+                b.Save(stream, ImageFormat.Png);
+                stream.Position = 0;
+                return SixLabors.ImageSharp.Image.Load<Rgb24>(stream);
+            }
+        }
+
         public static byte[] DrawBitmap(Bitmap b, bool is32)
         {
             var buffer = new List<byte>();
-            var range = new Rectangle(0, 0, b.Width, b.Height);
-            Bitmap indexed = b.Clone(range, PixelFormat.Format8bppIndexed);
+            Bitmap indexed = To256PaletteBitmap(ImageSharpFromBitmap(b)); // quant with png
             var bitmap = EncodeBitmapPixels(indexed);
             var frame_size = bitmap.Length + 7;
             if (is32)
@@ -88,7 +110,8 @@ namespace Diwoom
                 if (totalBits == 8)
                 {
                     buffer.Add(idx);
-                } else
+                }
+                else
                 {
                     currentByte <<= totalBits;
                     currentByte |= idx;
