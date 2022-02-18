@@ -4,8 +4,6 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Diwoom
 {
@@ -13,7 +11,7 @@ namespace Diwoom
     {
         private static byte[] Int2B(int p)
         {
-            return new byte[]{(byte)(p & 0x00ff), (byte)(p >> 8)};
+            return new byte[] { (byte)(p & 0x00ff), (byte)(p >> 8) };
         }
         private static byte[] FrameChecksum(byte[] bytes)
         {
@@ -88,7 +86,8 @@ namespace Diwoom
                 if (totalBits == 8)
                 {
                     buffer.Add(idx);
-                } else
+                }
+                else
                 {
                     currentByte <<= totalBits;
                     currentByte |= idx;

@@ -1,11 +1,7 @@
 ﻿using InTheHand.Net.Sockets;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -105,7 +101,9 @@ namespace Diwoom
             {
                 client.StopServer();
                 button1.Text = "Start";
-            } else {
+            }
+            else
+            {
                 client.StartServer(((int)portSelector.Value));
                 button1.Text = "Stop";
             }
@@ -171,7 +169,7 @@ namespace Diwoom
             var scoreRed = ((int)textBoxR.Value);
             var scoreBlue = ((int)textBoxB.Value);
             client.SendCommand(69, new byte[]{
-                6, 0,  (byte)(scoreRed & 0xff), (byte)(scoreRed >> 8), (byte)(scoreBlue & 0xff), (byte)(scoreBlue >> 8), 
+                6, 0,  (byte)(scoreRed & 0xff), (byte)(scoreRed >> 8), (byte)(scoreBlue & 0xff), (byte)(scoreBlue >> 8),
             });
         }
 

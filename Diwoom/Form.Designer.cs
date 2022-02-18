@@ -244,14 +244,14 @@
             // 
             // textBoxB
             // 
-            this.textBoxB.Location = new System.Drawing.Point(153, 81);
+            this.textBoxB.Location = new System.Drawing.Point(84, 79);
             this.textBoxB.Name = "textBoxB";
             this.textBoxB.Size = new System.Drawing.Size(45, 21);
             this.textBoxB.TabIndex = 14;
             // 
             // textBoxR
             // 
-            this.textBoxR.Location = new System.Drawing.Point(85, 81);
+            this.textBoxR.Location = new System.Drawing.Point(16, 79);
             this.textBoxR.Maximum = new decimal(new int[] {
             1000,
             0,
@@ -263,11 +263,11 @@
             // 
             // buttonScore
             // 
-            this.buttonScore.Location = new System.Drawing.Point(213, 78);
+            this.buttonScore.Location = new System.Drawing.Point(145, 78);
             this.buttonScore.Name = "buttonScore";
-            this.buttonScore.Size = new System.Drawing.Size(63, 23);
+            this.buttonScore.Size = new System.Drawing.Size(131, 23);
             this.buttonScore.TabIndex = 12;
-            this.buttonScore.Text = "Score";
+            this.buttonScore.Text = "Scoreboard";
             this.buttonScore.UseVisualStyleBackColor = true;
             this.buttonScore.Click += new System.EventHandler(this.buttonScore_Click);
             // 
@@ -304,7 +304,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(136, 86);
+            this.label2.Location = new System.Drawing.Point(67, 84);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(11, 12);
             this.label2.TabIndex = 15;
