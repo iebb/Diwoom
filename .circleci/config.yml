@@ -9,7 +9,6 @@ executors:
     docker:
       - image: cimg/go:1.18.0
 
-
 jobs:
   build-singlepackage:
     executor: win/default
