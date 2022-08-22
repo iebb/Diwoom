@@ -48,7 +48,7 @@ namespace Diwoom
         {
             using (var stream = new System.IO.MemoryStream())
             {
-                var options = new PngEncoder { Quantizer = new WuQuantizer(new QuantizerOptions { Dither = null, MaxColors = 256 }), ColorType = PngColorType.Palette };
+                var options = new PngEncoder { Quantizer = new WuQuantizer(new QuantizerOptions { Dither = null, MaxColors = 255 }), ColorType = PngColorType.Palette };
                 image.Save(stream, options);
                 stream.Position = 0;
                 return (Bitmap)Image.FromStream(stream);
@@ -64,22 +64,22 @@ namespace Diwoom
             }
         }
 
-        public static byte[] DrawBitmap(Bitmap b, bool is32)
+        public static byte[] DrawBitmap(Bitmap b, bool use32BitFormat)
         {
             var buffer = new List<byte>();
             Bitmap indexed = To256PaletteBitmap(ImageSharpFromBitmap(b)); // quant with png
             var bitmap = EncodeBitmapPixels(indexed);
             var frame_size = bitmap.Length + 7;
-            if (is32)
+            if (use32BitFormat)
             {
                 frame_size++;
             }
             buffer.AddRange(new byte[] {
                 0x0, 0x0A, 0x0A, 0x04,
                 0xAA, (byte)(frame_size & 0xFF), (byte)((frame_size >> 8) & 0xFF),
-                0, 0, (byte)(is32 ? 3 : 0), (byte)indexed.Palette.Entries.Length,
+                0, 0, (byte)(use32BitFormat ? 3 : 0), (byte)indexed.Palette.Entries.Length,
             });
-            if (is32)
+            if (use32BitFormat)
             {
                 buffer.Add(0);
             }
@@ -97,7 +97,7 @@ namespace Diwoom
             {
                 buffer.AddRange(new byte[] { entry.R, entry.G, entry.B });
             }
-            int totalBits = (int)Math.Ceiling(Math.Log(n_pale) / Math.Log(2));
+            int totalBits = (int)Math.Ceiling(Math.Log2(n_pale - 0.5));
             if (totalBits == 0)
             {
                 totalBits = 1;
