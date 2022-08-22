@@ -45,6 +45,9 @@
     <None Include="..\.editorconfig" Link=".editorconfig" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\.editorconfig" Link=".editorconfig" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="InTheHand.Net.Bluetooth">
       <Version>4.0.26</Version>
     </PackageReference>
