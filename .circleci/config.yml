@@ -16,7 +16,7 @@ jobs:
       - checkout
       - run:
           command: |
-            export VERSION=${CIRCLE_TAG:=$(git tag | tail -n1 | sed -rn 's/([0-9]+)\.([0-9]+).*/\1.\2/p').$(date '+%m%d').$(date '+%H%M')}
+            export VERSION=${CIRCLE_TAG:=$(git tag | tail -n1 | sed -rn 's/v?([0-9]+)\.([0-9]+).*/\1.\2/p').$(date '+%m%d').$(date '+%H%M')}
             mkdir releases
             echo $VERSION > releases/version.txt
             dotnet publish -c Release -o ./releases --no-self-contained -p:PublishSingleFile=true -p:AssemblyVersion=${VERSION:=0.0.1}
