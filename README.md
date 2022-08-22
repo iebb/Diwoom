@@ -1,6 +1,8 @@
 # Diwoom
 A Windows Divoom Client (unofficial)
 
+Download: https://github.com/iebb/Diwoom/releases
+
 Includes a Web Server, which provides easy integration with other apps.
 
 Python Example:
