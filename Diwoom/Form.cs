@@ -3,6 +3,9 @@ using SixLabors.ImageSharp.PixelFormats;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
+using System.Net;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -13,12 +16,113 @@ namespace Diwoom
         public BlueClient client = new BlueClient();
         public List<BluetoothDeviceInfo> btDevices = new List<BluetoothDeviceInfo>();
         public Color color = Color.LightGray;
+        public bool ServerStarted = false;
+        long lastMS = 0;
 
         Random randomizer = new Random();
+        HttpListener listener;
         public DiwoomForm()
         {
             InitializeComponent();
         }
+
+
+        byte[] ImageHandler(HttpListenerContext context)
+        {
+            using (var memstream = new MemoryStream())
+            {
+                context.Request.InputStream.CopyTo(memstream);
+                memstream.Position = 0;
+                var im = SixLabors.ImageSharp.Image.Load(memstream).CloneAs<Rgb24>();
+                picturePicker.Image = Util.To256PaletteBitmap(Util.ResizeBitmap(im, 64));
+                client.DrawBitmapDevice(im);
+            }
+            return new byte[] { 65 };
+        }
+        byte[] RawHandler(HttpListenerContext context)
+        {
+            using (var memstream = new MemoryStream())
+            {
+                context.Request.InputStream.CopyTo(memstream);
+                var payload = memstream.ToArray();
+                client._client.GetStream().Write(payload, 0, payload.Length);
+            }
+            return new byte[] { 65 };
+        }
+        byte[] CommandHandler(HttpListenerContext context)
+        {
+            using (var memstream = new MemoryStream())
+            {
+                context.Request.InputStream.CopyTo(memstream);
+                var payload = memstream.ToArray();
+                var cmdStr = context.Request.QueryString.Get("cmd");
+                if (Byte.TryParse(cmdStr, out byte cmd))
+                {
+                    var encoded = Util.BuildCommandArgs(cmd, payload);
+                    client._client.GetStream().Write(encoded, 0, encoded.Length);
+                }
+                else
+                {
+                    Console.WriteLine("cmd could not be parsed.");
+                }
+            }
+            return new byte[] { 65 };
+        }
+
+        private void ProcessRequestHandler(Task<HttpListenerContext> result)
+        {
+            var context = result.Result;
+
+            if (!listener.IsListening)
+                return;
+
+            // Start new listener which replace this
+            listener.GetContextAsync().ContinueWith(ProcessRequestHandler);
+
+            var responseBytes = Encoding.UTF8.GetBytes("stuck");
+            var timestampMs = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+            if (timestampMs - lastMS > 50)
+            {
+                lastMS = timestampMs + 5000;
+                switch (context.Request.Url.LocalPath)
+                {
+                    case "/cmd":
+                        responseBytes = CommandHandler(context);
+                        break;
+                    case "/img":
+                        responseBytes = ImageHandler(context);
+                        break;
+                    case "/raw":
+                    default:
+                        responseBytes = RawHandler(context);
+                        break;
+                }
+                lastMS = timestampMs;
+            }
+            context.Response.ContentLength64 = responseBytes.Length;
+            var output = context.Response.OutputStream;
+            output.WriteAsync(responseBytes, 0, responseBytes.Length);
+            output.Close();
+        }
+
+        public void StartServer(int port)
+        {
+            listener = new HttpListener();
+            listener.Prefixes.Add(String.Format("http://127.0.0.1:{0}/", port));
+            if (listener.IsListening)
+                return;
+
+            listener.Start();
+            ServerStarted = true;
+            listener.GetContextAsync().ContinueWith(ProcessRequestHandler);
+        }
+        public void StopServer()
+        {
+            if (listener.IsListening)
+                listener.Stop();
+            ServerStarted = false;
+        }
+
 
         async Task Discover(bool otherDevices)
         {
@@ -98,14 +202,14 @@ namespace Diwoom
         private void button1_Click(object sender, EventArgs e)
         {
             button1.Enabled = false;
-            if (client.ServerStarted)
+            if (ServerStarted)
             {
-                client.StopServer();
+                StopServer();
                 button1.Text = "Start";
             }
             else
             {
-                client.StartServer(((int)portSelector.Value));
+                StartServer(((int)portSelector.Value));
                 button1.Text = "Stop";
             }
             button1.Enabled = true;
