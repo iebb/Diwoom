@@ -1,6 +1,14 @@
 # Diwoom
 A Windows Divoom Client (unofficial)
 
+---
+
+### Referral Link - Get 10% off buying a Pixoo-64
+
+[Divoom International](http://divoominternationa.refr.cc/hongchuans)
+
+---
+
 Download: https://github.com/iebb/Diwoom/releases
 
 Includes a Web Server, which provides easy integration with other apps.
