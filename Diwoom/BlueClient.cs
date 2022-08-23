@@ -67,8 +67,8 @@ namespace Diwoom
                 context.Request.InputStream.CopyTo(memstream);
                 try
                 {
-                    var im = Image.FromStream(memstream);
-                    DrawBitmapDevice((Bitmap)im);
+                    var im = SixLabors.ImageSharp.Image.Load(memstream);
+                    DrawBitmapDevice(im);
                 }
                 catch
                 {
@@ -126,7 +126,7 @@ namespace Diwoom
                 _client.GetStream().Write(encoded, 0, encoded.Length);
             }
         }
-        public void DrawBitmapDevice(Bitmap im)
+        public void DrawBitmapDevice(SixLabors.ImageSharp.Image im)
         {
             var is32 = _device.DeviceName == "Pixoo-Max";
             var b = Util.ResizeBitmap(im, is32 ? 32 : 16);

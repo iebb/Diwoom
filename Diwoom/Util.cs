@@ -1,5 +1,7 @@
-﻿using SixLabors.ImageSharp.Formats.Png;
+﻿using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Processing.Processors.Quantization;
 using System;
 using System.Collections.Generic;
@@ -20,18 +22,10 @@ namespace Diwoom
         {
             return Int2B(bytes.Sum(pp => (int)pp));
         }
-        public static Bitmap ResizeBitmap(Bitmap bmp, int size)
+        public static SixLabors.ImageSharp.Image ResizeBitmap(SixLabors.ImageSharp.Image im, int size)
         {
-            Bitmap result = new Bitmap(size, size);
-            using (Graphics g = Graphics.FromImage(result))
-            {
-                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.None;
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
-                g.DrawImage(bmp, 0, 0, size, size);
-            }
-
-            return result;
+            im.Mutate(x => x.Resize(size, size));
+            return im;
         }
         public static byte[] EncodeFrame(byte[] payload)
         {
@@ -42,16 +36,14 @@ namespace Diwoom
             buffer.Add(0x02);
             return buffer.ToArray();
         }
-
-
         public static Bitmap To256PaletteBitmap(SixLabors.ImageSharp.Image image)
         {
             using (var stream = new System.IO.MemoryStream())
             {
-                var options = new PngEncoder { Quantizer = new WuQuantizer(new QuantizerOptions { Dither = null, MaxColors = 255 }), ColorType = PngColorType.Palette };
-                image.Save(stream, options);
+                var options = new PngEncoder { Quantizer = new WuQuantizer(new QuantizerOptions { Dither = null, MaxColors = 256 }), ColorType = PngColorType.Palette };
+                image.CloneAs<Rgb24>().Save(stream, options);
                 stream.Position = 0;
-                return (Bitmap)Image.FromStream(stream);
+                return (Bitmap)System.Drawing.Image.FromStream(stream);
             }
         }
         public static SixLabors.ImageSharp.Image ImageSharpFromBitmap(Bitmap b)
@@ -63,40 +55,39 @@ namespace Diwoom
                 return SixLabors.ImageSharp.Image.Load<Rgb24>(stream);
             }
         }
-
-        public static byte[] DrawBitmap(Bitmap b, bool use32BitFormat)
+        public static byte[] DrawBitmap(SixLabors.ImageSharp.Image b, bool use32BitFormat)
         {
             var buffer = new List<byte>();
-            Bitmap indexed = To256PaletteBitmap(ImageSharpFromBitmap(b)); // quant with png
-            var bitmap = EncodeBitmapPixels(indexed);
-            var frame_size = bitmap.Length + 7;
-            if (use32BitFormat)
-            {
-                frame_size++;
-            }
+
+            var quantizer = new WuQuantizer(new QuantizerOptions { Dither = null, MaxColors = 256 });
+            ImageFrame<Rgb24> frame = b.CloneAs<Rgb24>().Frames.RootFrame;
+
+            using IQuantizer<Rgb24> frameQuantizer = quantizer.CreatePixelSpecificQuantizer<Rgb24>(Configuration.Default);
+            using IndexedImageFrame<Rgb24> result = frameQuantizer.BuildPaletteAndQuantizeFrame(frame, frame.Bounds());
+
+            int n_pale = result.Palette.Length;
+
+            var frame_size = result.Palette.Length * 3 + b.Height * b.Width + (use32BitFormat ? 8 : 7);
             buffer.AddRange(new byte[] {
                 0x0, 0x0A, 0x0A, 0x04,
                 0xAA, (byte)(frame_size & 0xFF), (byte)((frame_size >> 8) & 0xFF),
-                0, 0, (byte)(use32BitFormat ? 3 : 0), (byte)indexed.Palette.Entries.Length,
+                0, 0, (byte)(use32BitFormat ? 3 : 0),
             });
             if (use32BitFormat)
             {
-                buffer.Add(0);
+                buffer.AddRange(Int2B(n_pale));
             }
-            buffer.AddRange(bitmap);
-            return buffer.ToArray();
-        }
-        public static byte[] EncodeBitmapPixels(Bitmap indexed)
-        {
-            var buffer = new List<byte>();
-            Int32 stride;
-            int n_pale = indexed.Palette.Entries.Length;
-            byte[] rawData = GetImageData(indexed, out stride, true);
+            else
+            {
+                buffer.Add((byte)n_pale);
+            }
 
-            foreach (var entry in indexed.Palette.Entries)
+
+            foreach (var entry in result.Palette.Span)
             {
                 buffer.AddRange(new byte[] { entry.R, entry.G, entry.B });
             }
+
             int totalBits = (int)Math.Ceiling(Math.Log2(n_pale - 0.5));
             if (totalBits == 0)
             {
@@ -105,22 +96,26 @@ namespace Diwoom
             int bitCnt = 0;
             ushort currentByte = 0;
 
-            foreach (var idx in rawData)
+            for (int i = 0; i < b.Height; i++)
             {
-                if (totalBits == 8)
+                var row = result.DangerousGetRowSpan(i);
+                foreach (var idx in row)
                 {
-                    buffer.Add(idx);
-                }
-                else
-                {
-                    currentByte <<= totalBits;
-                    currentByte |= idx;
-                    bitCnt += totalBits;
-                    if (bitCnt >= 8)
+                    if (totalBits == 8)
                     {
-                        buffer.Add((byte)(currentByte >> (bitCnt - 8)));
-                        currentByte = (ushort)(currentByte & ~(1 << (bitCnt - 8) - 1));
-                        bitCnt -= 8;
+                        buffer.Add(idx);
+                    }
+                    else
+                    {
+                        currentByte <<= totalBits;
+                        currentByte |= idx;
+                        bitCnt += totalBits;
+                        if (bitCnt >= 8)
+                        {
+                            buffer.Add((byte)(currentByte >> (bitCnt - 8)));
+                            currentByte = (ushort)(currentByte & ~(1 << (bitCnt - 8) - 1));
+                            bitCnt -= 8;
+                        }
                     }
                 }
             }
@@ -155,44 +150,6 @@ namespace Diwoom
             }
 
             return result.ToArray();
-        }
-        /// <summary>
-        /// Gets the raw bytes from an image.
-        /// </summary>
-        /// <param name="sourceImage">The image to get the bytes from.</param>
-        /// <param name="stride">Stride of the retrieved image data.</param>
-        /// <param name="collapseStride">Collapse the stride to the minimum required for the image data.</param>
-        /// <returns>The raw bytes of the image.</returns>
-        public static Byte[] GetImageData(Bitmap sourceImage, out Int32 stride, Boolean collapseStride)
-        {
-            if (sourceImage == null)
-                throw new ArgumentNullException("sourceImage", "Source image is null!");
-            Int32 width = sourceImage.Width;
-            Int32 height = sourceImage.Height;
-            BitmapData sourceData = sourceImage.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, sourceImage.PixelFormat);
-            stride = sourceData.Stride;
-            Byte[] data;
-            if (collapseStride)
-            {
-                Int32 actualDataWidth = ((Image.GetPixelFormatSize(sourceImage.PixelFormat) * width) + 7) / 8;
-                Int64 sourcePos = sourceData.Scan0.ToInt64();
-                Int32 destPos = 0;
-                data = new Byte[actualDataWidth * height];
-                for (Int32 y = 0; y < height; ++y)
-                {
-                    Marshal.Copy(new IntPtr(sourcePos), data, destPos, actualDataWidth);
-                    sourcePos += stride;
-                    destPos += actualDataWidth;
-                }
-                stride = actualDataWidth;
-            }
-            else
-            {
-                data = new Byte[stride * height];
-                Marshal.Copy(sourceData.Scan0, data, 0, data.Length);
-            }
-            sourceImage.UnlockBits(sourceData);
-            return data;
         }
     }
 }

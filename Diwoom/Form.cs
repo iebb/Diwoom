@@ -1,4 +1,5 @@
 ﻿using InTheHand.Net.Sockets;
+using SixLabors.ImageSharp.PixelFormats;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -116,8 +117,8 @@ namespace Diwoom
             open.Filter = "Image Files(*.jpg; *.jpeg; *.gif; *.bmp; *.png)|*.jpg; *.jpeg; *.gif; *.bmp; *.png";
             if (open.ShowDialog() == DialogResult.OK)
             {
-                var im = new Bitmap(open.FileName);
-                picturePicker.Image = Util.ResizeBitmap(im, 64);
+                var im = SixLabors.ImageSharp.Image.Load(open.FileName).CloneAs<Rgb24>();
+                picturePicker.Image = Util.To256PaletteBitmap(Util.ResizeBitmap(im, 64));
                 client.DrawBitmapDevice(im);
             }
         }
