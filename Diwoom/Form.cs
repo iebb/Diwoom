@@ -100,9 +100,15 @@ namespace Diwoom
                 lastMS = timestampMs;
             }
             context.Response.ContentLength64 = responseBytes.Length;
-            var output = context.Response.OutputStream;
-            output.WriteAsync(responseBytes, 0, responseBytes.Length);
-            output.Close();
+            try
+            {
+                var output = context.Response.OutputStream;
+                output.WriteAsync(responseBytes, 0, responseBytes.Length);
+                output.Close();
+            } catch
+            {
+                
+            }
         }
 
         public void StartServer(int port)
@@ -136,7 +142,10 @@ namespace Diwoom
                 var devices = client.ConnectedDevices();
                 foreach (var device in devices)
                 {
-                    btDevices.Add(device);
+                    if (device.Connected)
+                    {
+                        btDevices.Add(device);
+                    }
                     // Console.WriteLine(device.DeviceAddress.ToString());
                 }
                 deviceSelector.BeginInvoke((Action)delegate ()

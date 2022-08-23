@@ -24,8 +24,7 @@ namespace Diwoom
         }
         public static SixLabors.ImageSharp.Image ResizeBitmap(SixLabors.ImageSharp.Image im, int size)
         {
-            im.Mutate(x => x.Resize(size, size));
-            return im;
+            return im.Clone(x => x.Resize(size, size));
         }
         public static byte[] EncodeFrame(byte[] payload)
         {
