@@ -68,7 +68,7 @@ namespace Diwoom
         }
         public void DrawBitmapDevice(SixLabors.ImageSharp.Image im)
         {
-            var is32 = _device.DeviceName == "Pixoo-Max";
+            var is32 = _device.DeviceName.Contains("Pixoo-Max");
             var b = Util.ResizeBitmap(im, is32 ? 32 : 16);
             var payload = Util.DrawBitmap(b, is32);
             SendCommand(68, payload);
